@@ -1,0 +1,10 @@
+spring:
+  config:
+    activate:
+      on-profile: prod
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5433/scattermerge_prod}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false

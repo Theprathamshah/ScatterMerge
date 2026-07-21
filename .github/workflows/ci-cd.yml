@@ -1,0 +1,42 @@
+name: ScatterMerge CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Build and Test with Maven
+        run: ./mvnw clean package
+
+  deploy-dev:
+    needs: build-and-test
+    if: github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render Dev Deploy Hook
+        run: |
+          curl -f -X POST "${{ secrets.RENDER_DEV_DEPLOY_HOOK }}"
+
+  deploy-prod:
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render Prod Deploy Hook
+        run: |
+          curl -f -X POST "${{ secrets.RENDER_PROD_DEPLOY_HOOK }}"
