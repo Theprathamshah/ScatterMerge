@@ -1,3 +1,16 @@
+server:
+  port: 8081
+
 spring:
   application:
     name: ScatterMerge
+  datasource:
+    url: jdbc:postgresql://localhost:5433/scattermerge
+    username: postgres
+    password: postgrespassword
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    open-in-view: false
