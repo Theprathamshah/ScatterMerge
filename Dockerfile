@@ -1,16 +1,23 @@
-# Stage 1: Build application using Maven with Java 25
-FROM maven:3.9.9-eclipse-temurin-25-alpine AS build
+# Stage 1: Build application using JDK 25 & Maven Wrapper
+FROM eclipse-temurin:25-jdk-alpine AS build
 WORKDIR /app
-COPY pom.xml .
-COPY src ./src
-RUN mvn clean package -DskipTests
 
-# Stage 2: Lightweight Java 25 runtime
+# Copy maven wrapper & pom.xml for dependency caching
+COPY .mvn .mvn
+COPY mvnw pom.xml ./
+RUN chmod +x mvnw
+RUN ./mvnw dependency:go-offline -B
+
+# Copy source code and build final jar
+COPY src ./src
+RUN ./mvnw clean package -DskipTests
+
+# Stage 2: Lightweight Java 25 JRE runtime
 FROM eclipse-temurin:25-jre-alpine
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
 
-# Tuned memory limits for free tier 512MB containers
+# Memory optimizations for 512MB free tier containers
 ENV JAVA_OPTS="-Xms128m -Xmx256m -XX:+UseG1GC"
 
 EXPOSE 8080
