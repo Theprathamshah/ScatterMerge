@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - dev
+      - develop
 
 jobs:
   build-and-test:
@@ -25,7 +25,7 @@ jobs:
 
   deploy-dev:
     needs: build-and-test
-    if: github.ref == 'refs/heads/dev'
+    if: github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
     steps:
       - name: Trigger Render Dev Deploy Hook
