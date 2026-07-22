@@ -1,5 +1,11 @@
 package com.prathamcodes.scattermerge.service.provider;
 
-public interface ProviderConnector {
+import com.prathamcodes.scattermerge.model.dto.AggregationRequest;
+import com.prathamcodes.scattermerge.model.dto.ProviderResult;
+
+public interface ProviderConnector<T> {
+    String getProviderId();
+    String getProviderName();
+    ProviderResult<T> fetchOffers(AggregationRequest request);
 
 }
