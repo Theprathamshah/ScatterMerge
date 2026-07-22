@@ -3,7 +3,7 @@ services:
     image: postgres:17-alpine
     container_name: scattermerge_postgres
     environment:
-      POSTGRES_DB: scattermerge
+      POSTGRES_DB: scattermerge_dev
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgrespassword
     ports:

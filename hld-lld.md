@@ -253,24 +253,31 @@ public record AggregationRequest(
 package com.prathamcodes.scattermerge.model.dto;
 
 import com.prathamcodes.scattermerge.model.enums.ProviderStatus;
-import java.math.BigDecimal;
 import java.util.List;
 
-public record ProviderResult(
+public record ProviderResult<T>(
     String providerId,
     String providerName,
     ProviderStatus status, // SUCCESS, TIMEOUT, FAILED_FALLBACK
     long latencyMs,
-    List<FlightOffer> offers,
+    List<T> data, // Generic payload list (e.g. FlightOffer, ShippingRate, CryptoRate)
     String errorMessage
-) {
-    public record FlightOffer(
-        String flightNumber,
-        BigDecimal price,
-        String currency,
-        String flightDuration
-    ) {}
-}
+) {}
+```
+
+#### `FlightOffer.java` (Example domain DTO)
+
+```java
+package com.prathamcodes.scattermerge.model.dto;
+
+import java.math.BigDecimal;
+
+public record FlightOffer(
+    String flightNumber,
+    BigDecimal price,
+    String currency,
+    String flightDuration
+) {}
 ```
 
 #### `AggregationResponse.java`
@@ -280,14 +287,14 @@ package com.prathamcodes.scattermerge.model.dto;
 
 import java.util.List;
 
-public record AggregationResponse(
+public record AggregationResponse<T>(
     String jobId,
     String searchSummary,
     long totalExecutionTimeMs,
     int totalProvidersQueried,
     int successfulProvidersCount,
     int fallbackProvidersCount,
-    List<ProviderResult> providerResults
+    List<ProviderResult<T>> providerResults
 ) {}
 ```
 
@@ -304,32 +311,32 @@ classDiagram
         +processAggregationAsync(String jobId, AggregationRequest request): void
     }
 
-    class ScatterGatherEngine {
-        -List~ProviderConnector~ connectors
+    class ScatterGatherEngine~T~ {
+        -List~ProviderConnector~T~~ connectors
         -ExecutorService virtualThreadExecutor
-        +scatterAndGather(AggregationRequest request): List~CompletableFuture~ProviderResult~~
+        +executeScatterGather(AggregationRequest request): List~ProviderResult~T~~
     }
 
-    class ProviderConnector {
+    class ProviderConnector~T~ {
         <<interface>>
         +getProviderId(): String
         +getProviderName(): String
-        +fetchOffers(AggregationRequest request): ProviderResult
+        +fetchOffers(AggregationRequest request): ProviderResult~T~
     }
 
     class AirlineProviderClient {
         -RestClient restClient
         -String providerUrl
-        +fetchOffers(AggregationRequest request): ProviderResult
+        +fetchOffers(AggregationRequest request): ProviderResult~FlightOffer~
     }
 
-    class ResultAggregator {
-        +aggregate(String jobId, AggregationRequest req, List~ProviderResult~ results, long startMs): AggregationResponse
+    class ResultAggregator~T~ {
+        +aggregate(String jobId, AggregationRequest req, List~ProviderResult~T~~ results, long startMs): AggregationResponse~T~
     }
 
-    class WebhookDispatcherService {
+    class WebhookDispatcherService~T~ {
         -HttpClient httpClient
-        +sendWebhookWithRetry(String webhookUrl, String clientSecret, AggregationResponse response): boolean
+        +sendWebhookWithRetry(String webhookUrl, String clientSecret, AggregationResponse~T~ response): boolean
     }
 
     AggregationController --> AggregationOrchestrator
@@ -361,20 +368,20 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 @Service
-public class ScatterGatherEngine {
+public class ScatterGatherEngine<T> {
 
-    private final List<ProviderConnector> connectors;
+    private final List<ProviderConnector<T>> connectors;
     // Java 25 Virtual Thread Executor
     private final ExecutorService virtualThreadExecutor = Executors.newVirtualThreadPerTaskExecutor();
     private static final long TIMEOUT_SECONDS = 2;
 
-    public ScatterGatherEngine(List<ProviderConnector> connectors) {
+    public ScatterGatherEngine(List<ProviderConnector<T>> connectors) {
         this.connectors = connectors;
     }
 
-    public List<ProviderResult> executeScatterGather(AggregationRequest request) {
+    public List<ProviderResult<T>> executeScatterGather(AggregationRequest request) {
         // 1. Scatter: Dispatch all tasks in parallel on Virtual Threads
-        List<CompletableFuture<ProviderResult>> futures = connectors.stream()
+        List<CompletableFuture<ProviderResult<T>>> futures = connectors.stream()
             .map(connector -> 
                 CompletableFuture.supplyAsync(() -> connector.fetchOffers(request), virtualThreadExecutor)
                     // 2. Enforce 2-second strict timeout per provider task
@@ -398,14 +405,14 @@ public class ScatterGatherEngine {
             .toList();
     }
 
-    private ProviderResult createFallbackResult(ProviderConnector connector, Throwable ex) {
+    private ProviderResult<T> createFallbackResult(ProviderConnector<T> connector, Throwable ex) {
         boolean isTimeout = ex instanceof java.util.concurrent.TimeoutException;
         ProviderStatus status = isTimeout ? ProviderStatus.TIMEOUT : ProviderStatus.FAILED_FALLBACK;
         String errorMsg = isTimeout 
             ? "Provider response exceeded deadline of " + TIMEOUT_SECONDS + "s"
             : "Provider error: " + ex.getMessage();
 
-        return new ProviderResult(
+        return new ProviderResult<>(
             connector.getProviderId(),
             connector.getProviderName(),
             status,

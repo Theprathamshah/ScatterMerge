@@ -1,8 +1,10 @@
 package com.prathamcodes.scattermerge.config;
 
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 
 @Configuration
-public class WireMockConfig {
+@EnableJpaAuditing
+public class JpaConfig {
 
 }
