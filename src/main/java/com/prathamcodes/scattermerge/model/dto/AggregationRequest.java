@@ -16,6 +16,5 @@ public record AggregationRequest(
     @NotBlank(message = "Webhook URL cannot be blank")
     @URL(message = "Webhook URL must be a valid URL")
     String webhookUrl,
-    @NotBlank(message = "Client ID cannot be blank")
     String clientSecret
 ) {}
